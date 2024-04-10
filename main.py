@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 import requests
+from openai import OpenAI
 
 app = FastAPI()
 
@@ -35,33 +36,23 @@ async def search_hotels(query: str, rapidapi_key: str, limit: int = 20, lat: flo
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/chat", response_class=JSONResponse, tags=["ChatGPT4"])
-async def search_hotels(query: str, rapidapi_key: str):
-    url = "https://chatgpt-42.p.rapidapi.com/conversationgpt4"
-    payload = {
-        "messages": [
+async def search_hotels(query: str, key: str):
+    client = OpenAI(api_key=key)
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        # model="gpt-4",
+        messages=[
             {
                 "role": "user",
-                "content": query  # This line is modified to use the 'query' parameter
-            }
+                "content": query
+            },
         ],
-        "system_prompt": "",
-        "temperature": 0.9,
-        "top_k": 5,
-        "top_p": 0.9,
-        "max_tokens": 256,
-        "web_access": False
-    }
-    headers = {
-        "content-type": "application/json",
-        "X-RapidAPI-Key": rapidapi_key,  # Using the provided API key
-        "X-RapidAPI-Host": "chatgpt-42.p.rapidapi.com"
-    }
+        temperature=1,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
 
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return response.choices[0].message.content
